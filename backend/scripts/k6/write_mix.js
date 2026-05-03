@@ -31,27 +31,18 @@ export function setup() {
     };
   });
 
-  let authorIds = config.authorIds.slice();
-  if (authorIds.length === 0) {
-    const authorToken = login(config.baseUrl, config.authorUsername, config.authorPassword, 'author_login');
-    const author = getCurrentUser(config.baseUrl, authorToken, 'author_me');
-    authorIds = [config.authorId || author.id];
-  }
-
   return {
     viewerSessions,
-    authorIds,
     videoIds: requireVideoIds(config.videoIds),
   };
 }
 
 export default function (data) {
   const viewer = pickOne(data.viewerSessions);
-  const authorId = pickOne(data.authorIds);
   const videoId = pickOne(data.videoIds);
   const roll = Math.random();
 
-  if (roll < 0.2) {
+  if (roll < 0.4) {
     assertOK(
       http.post(
         `${config.baseUrl}/api/v1/videos/${videoId}/likes`,
@@ -60,7 +51,7 @@ export default function (data) {
       ),
       'like_video',
     );
-  } else if (roll < 0.4) {
+  } else if (roll < 0.8) {
     assertOK(
       http.del(
         `${config.baseUrl}/api/v1/videos/${videoId}/likes`,
@@ -69,7 +60,7 @@ export default function (data) {
       ),
       'unlike_video',
     );
-  } else if (roll < 0.55) {
+  } else if (roll < 0.85) {
     assertOK(
       http.post(
         `${config.baseUrl}/api/v1/videos/${videoId}/favorites`,
@@ -78,7 +69,7 @@ export default function (data) {
       ),
       'favorite_video',
     );
-  } else if (roll < 0.7) {
+  } else if (roll < 0.9) {
     assertOK(
       http.del(
         `${config.baseUrl}/api/v1/videos/${videoId}/favorites`,
@@ -87,7 +78,7 @@ export default function (data) {
       ),
       'unfavorite_video',
     );
-  } else if (roll < 0.9) {
+  } else {
     const comment = assertOK(
       http.post(
         `${config.baseUrl}/api/v1/videos/${videoId}/comments`,
@@ -105,26 +96,6 @@ export default function (data) {
           authParams(viewer.token, { endpoint: 'delete_comment' }),
         ),
         'delete_comment',
-      );
-    }
-  } else if (viewer.id !== authorId) {
-    if (Math.random() < 0.5) {
-      assertOK(
-        http.post(
-          `${config.baseUrl}/api/v1/users/${authorId}/follow`,
-          null,
-          authParams(viewer.token, { endpoint: 'follow_user' }),
-        ),
-        'follow_user',
-      );
-    } else {
-      assertOK(
-        http.del(
-          `${config.baseUrl}/api/v1/users/${authorId}/follow`,
-          null,
-          authParams(viewer.token, { endpoint: 'unfollow_user' }),
-        ),
-        'unfollow_user',
       );
     }
   }

@@ -31,44 +31,27 @@ export function setup() {
     };
   });
 
-  let authorIds = config.authorIds.slice();
-  if (authorIds.length === 0) {
-    const authorToken = login(config.baseUrl, config.authorUsername, config.authorPassword, 'author_login');
-    const author = getCurrentUser(config.baseUrl, authorToken, 'author_me');
-    authorIds = [config.authorId || author.id];
-  }
-
   return {
     viewerSessions,
-    authorIds,
     videoIds: requireVideoIds(config.videoIds),
   };
 }
 
-function doRead(viewerToken, videoIds) {
+function doRead(viewerToken) {
   const readRoll = Math.random();
 
-  if (readRoll < 0.2) {
+  if (readRoll < 0.15) {
     assertOK(
       http.get(`${config.baseUrl}/api/v1/feed/home?limit=10`, { tags: { endpoint: 'feed_home_anon' } }),
       'feed_home_anon',
     );
-  } else if (readRoll < 0.7) {
+  } else if (readRoll < 0.85) {
     assertOK(
       http.get(
         `${config.baseUrl}/api/v1/feed/home?limit=10`,
         authParams(viewerToken, { endpoint: 'feed_home_auth' }),
       ),
       'feed_home_auth',
-    );
-  } else if (readRoll < 0.85) {
-    const videoId = pickOne(videoIds);
-    assertOK(
-      http.get(
-        `${config.baseUrl}/api/v1/videos/${videoId}`,
-        authParams(viewerToken, { endpoint: 'video_detail' }),
-      ),
-      'video_detail',
     );
   } else {
     assertOK(
@@ -81,12 +64,11 @@ function doRead(viewerToken, videoIds) {
   }
 }
 
-function doWrite(viewer, authorIds, videoIds) {
-  const authorId = pickOne(authorIds);
+function doWrite(viewer, videoIds) {
   const videoId = pickOne(videoIds);
   const writeRoll = Math.random();
 
-  if (writeRoll < 0.2) {
+  if (writeRoll < 0.4) {
     assertOK(
       http.post(
         `${config.baseUrl}/api/v1/videos/${videoId}/likes`,
@@ -95,7 +77,7 @@ function doWrite(viewer, authorIds, videoIds) {
       ),
       'like_video',
     );
-  } else if (writeRoll < 0.4) {
+  } else if (writeRoll < 0.8) {
     assertOK(
       http.del(
         `${config.baseUrl}/api/v1/videos/${videoId}/likes`,
@@ -104,7 +86,7 @@ function doWrite(viewer, authorIds, videoIds) {
       ),
       'unlike_video',
     );
-  } else if (writeRoll < 0.55) {
+  } else if (writeRoll < 0.85) {
     assertOK(
       http.post(
         `${config.baseUrl}/api/v1/videos/${videoId}/favorites`,
@@ -113,7 +95,7 @@ function doWrite(viewer, authorIds, videoIds) {
       ),
       'favorite_video',
     );
-  } else if (writeRoll < 0.7) {
+  } else if (writeRoll < 0.9) {
     assertOK(
       http.del(
         `${config.baseUrl}/api/v1/videos/${videoId}/favorites`,
@@ -122,7 +104,7 @@ function doWrite(viewer, authorIds, videoIds) {
       ),
       'unfavorite_video',
     );
-  } else if (writeRoll < 0.9) {
+  } else {
     const comment = assertOK(
       http.post(
         `${config.baseUrl}/api/v1/videos/${videoId}/comments`,
@@ -142,26 +124,6 @@ function doWrite(viewer, authorIds, videoIds) {
         'delete_comment',
       );
     }
-  } else if (viewer.id !== authorId) {
-    if (Math.random() < 0.5) {
-      assertOK(
-        http.post(
-          `${config.baseUrl}/api/v1/users/${authorId}/follow`,
-          null,
-          authParams(viewer.token, { endpoint: 'follow_user' }),
-        ),
-        'follow_user',
-      );
-    } else {
-      assertOK(
-        http.del(
-          `${config.baseUrl}/api/v1/users/${authorId}/follow`,
-          null,
-          authParams(viewer.token, { endpoint: 'unfollow_user' }),
-        ),
-        'unfollow_user',
-      );
-    }
   }
 }
 
@@ -169,10 +131,10 @@ export default function (data) {
   const viewer = pickOne(data.viewerSessions);
   const roll = Math.random();
 
-  if (roll < 0.7) {
-    doRead(viewer.token, data.videoIds);
+  if (roll < 0.8) {
+    doRead(viewer.token);
   } else {
-    doWrite(viewer, data.authorIds, data.videoIds);
+    doWrite(viewer, data.videoIds);
   }
 
   sleep(config.pauseSeconds);
