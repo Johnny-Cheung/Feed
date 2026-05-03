@@ -8,8 +8,10 @@ param(
     [string]$ViewerPrefix = "lt_viewer",
     [string]$AuthorPassword = "1234567",
     [string]$ViewerPassword = "123456",
-    [int]$AuthorCount = 4,
-    [int]$ViewerCount = 20,
+    # Existing author/viewer accounts are always included below, so these are
+    # the additional accounts needed to reach the target totals.
+    [int]$AuthorCount = 19,
+    [int]$ViewerCount = 99,
     [int]$VideosPerAuthor = 10,
     [int]$FollowPerViewer = 3,
     [int]$LikePerViewer = 10,
