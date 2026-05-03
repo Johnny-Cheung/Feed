@@ -1,0 +1,71 @@
+# Local host-run development example.
+# If the Go app later runs inside Docker, change mysql/redis/rabbitmq host
+# from 127.0.0.1 to the corresponding service names.
+
+app:
+  name: feed-backend
+  env: dev
+  host: 0.0.0.0
+  port: 18080
+  read_timeout: 10s
+  write_timeout: 20s
+  static_base_url: http://localhost:18080
+
+mysql:
+  host: 127.0.0.1
+  port: 13307
+  user: root
+  password: root
+  dbname: feed
+  max_idle_conns: 10
+  max_open_conns: 50
+  conn_max_lifetime: 1h
+
+redis:
+  addr: 127.0.0.1:6380
+  password: ""
+  db: 0
+
+rabbitmq:
+  url: amqp://guest:guest@127.0.0.1:5672/
+  exchange: feed.events
+  queue_video_stats: video.stats.queue
+  queue_hotfeed: video.hotfeed.queue
+  queue_following_inbox: video.following_inbox.queue
+  queue_user_follow: user.follow.queue
+
+jobs:
+  enabled: true
+  run_on_start: false
+  video_stats_reconcile_every: 24h
+  hot_feed_dirty_refresh_every: 1m
+  hot_feed_rebuild_every: 1h
+  lock_ttl: 30m
+  batch_size: 500
+
+jwt:
+  secret: change-me-in-local-dev
+  expire_hours: 24
+
+storage:
+  root_dir: ./storage
+  videos_dir: videos
+  covers_dir: covers
+  avatars_dir: avatars
+  max_video_mb: 100
+  max_image_mb: 5
+
+pagination:
+  default_limit: 20
+  max_limit: 20
+
+feed:
+  following_pull_mode_threshold: 10000
+  home_hot_max_entries: 10000
+  video_relation_stream_max_entries: 1000000
+  hot_comment_cache_entries: 50
+  hot_comment_cache_ttl: 1h
+
+cors:
+  allow_origins:
+    - http://localhost:3000

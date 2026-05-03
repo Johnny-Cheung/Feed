@@ -1,0 +1,38 @@
+# Local config
+configs/config.yaml
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs and temp files
+*.log
+tmp/
+temp/
+.cache/
+
+# Build output
+bin/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go workspace files
+coverage.out
+
+# Uploaded media files
+storage/videos/*
+!storage/videos/.gitkeep
+storage/covers/*
+!storage/covers/.gitkeep
+storage/avatars/*
+!storage/avatars/.gitkeep
