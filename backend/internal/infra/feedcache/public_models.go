@@ -15,6 +15,32 @@ type visibleAuthorRow struct {
 	AuthorID uint64 `gorm:"column:author_id"`
 }
 
+const loadVideoStatsScriptSource = `
+if #KEYS ~= #ARGV then
+	return redis.error_reply("video stats key/id count mismatch")
+end
+
+local result = {}
+for i = 1, #KEYS do
+	local values = redis.call(
+		"HMGET",
+		KEYS[i],
+		"video_id",
+		"like_count",
+		"comment_count",
+		"favorite_count",
+		"hot_score"
+	)
+	for j = 1, #values do
+		result[#result + 1] = values[j]
+	end
+end
+
+return result
+`
+
+var loadVideoStatsScript = redis.NewScript(loadVideoStatsScriptSource)
+
 func (c *Cache) LoadVideoBasesByVideoIDs(ctx context.Context, videoIDs []uint64) (map[uint64]*VideoBase, []uint64, error) {
 	loaded, missing, err := c.loadJSONMapByUint64Keys(ctx, keysForVideoBaseIDs(videoIDs), videoIDs, decodeVideoBase)
 	if err != nil {
@@ -205,48 +231,30 @@ func (c *Cache) LoadVideoStatsByVideoIDs(ctx context.Context, videoIDs []uint64)
 		return result, append([]uint64(nil), videoIDs...), nil
 	}
 
-	pipe := c.redis.Pipeline()
-	cmds := make([]*redis.SliceCmd, 0, len(videoIDs))
 	filteredVideoIDs := make([]uint64, 0, len(videoIDs))
+	keys := make([]string, 0, len(videoIDs))
+	args := make([]interface{}, 0, len(videoIDs))
 	for _, videoID := range videoIDs {
 		if videoID == 0 {
 			continue
 		}
 		filteredVideoIDs = append(filteredVideoIDs, videoID)
-		cmds = append(cmds, pipe.HMGet(
-			ctx,
-			videoStatsKey(videoID),
-			videoStatsVideoIDField,
-			videoStatsLikeCountField,
-			videoStatsCommentCountField,
-			videoStatsFavoriteCountField,
-			videoStatsHotScoreField,
-		))
+		keys = append(keys, videoStatsKey(videoID))
+		args = append(args, strconv.FormatUint(videoID, 10))
 	}
-	if len(cmds) == 0 {
+	if len(keys) == 0 {
 		return result, nil, nil
 	}
 
-	if _, err := pipe.Exec(ctx); err != nil {
+	values, err := loadVideoStatsScript.Run(ctx, c.redis, keys, args...).Slice()
+	if err != nil {
 		return nil, nil, fmt.Errorf("load video stats cache: %w", err)
 	}
 
-	missing := make([]uint64, 0)
-	for i, cmd := range cmds {
-		videoID := filteredVideoIDs[i]
-		values, err := cmd.Result()
-		if err != nil {
-			return nil, nil, fmt.Errorf("load video stats cache: video_id=%d err=%w", videoID, err)
-		}
-
-		stats, ok := parseVideoStatsHash(videoID, values)
-		if !ok {
-			missing = append(missing, videoID)
-			continue
-		}
-		result[videoID] = stats
+	result, missing, err := parseVideoStatsScriptResult(filteredVideoIDs, values)
+	if err != nil {
+		return nil, nil, fmt.Errorf("load video stats cache: %w", err)
 	}
-
 	return result, missing, nil
 }
 
@@ -481,6 +489,31 @@ func parseVideoStatsHash(expectedVideoID uint64, values []interface{}) (*VideoSt
 		FavoriteCount: favoriteCount,
 		HotScore:      hotScore,
 	}, true
+}
+
+func parseVideoStatsScriptResult(videoIDs []uint64, values []interface{}) (map[uint64]*VideoStats, []uint64, error) {
+	result := make(map[uint64]*VideoStats, len(videoIDs))
+	if len(videoIDs) == 0 {
+		return result, nil, nil
+	}
+
+	const fieldCount = 5
+	expectedValueCount := len(videoIDs) * fieldCount
+	if len(values) != expectedValueCount {
+		return nil, nil, fmt.Errorf("invalid video stats script result: got %d values for %d videos", len(values), len(videoIDs))
+	}
+
+	missing := make([]uint64, 0)
+	for i, videoID := range videoIDs {
+		start := i * fieldCount
+		stats, ok := parseVideoStatsHash(videoID, values[start:start+fieldCount])
+		if !ok {
+			missing = append(missing, videoID)
+			continue
+		}
+		result[videoID] = stats
+	}
+	return result, missing, nil
 }
 
 func redisHashValuesEmpty(values []interface{}) bool {

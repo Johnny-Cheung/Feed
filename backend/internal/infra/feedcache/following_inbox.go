@@ -12,6 +12,26 @@ import (
 
 const followingInboxFanoutBatchSize = 200
 
+const markUserActiveScriptSource = `
+local active_key = KEYS[1]
+local ttl_seconds = tonumber(ARGV[1])
+local refresh_threshold_seconds = tonumber(ARGV[2])
+
+local active_ttl = redis.call("TTL", active_key)
+if active_ttl > refresh_threshold_seconds then
+	return 0
+end
+
+redis.call("SET", active_key, "1", "EX", ttl_seconds)
+for i = 2, #KEYS do
+	redis.call("EXPIRE", KEYS[i], ttl_seconds)
+end
+
+return 1
+`
+
+var markUserActiveScript = redis.NewScript(markUserActiveScriptSource)
+
 type FollowingInboxRef struct {
 	VideoID     uint64
 	PublishedAt time.Time
@@ -22,11 +42,19 @@ func (c *Cache) MarkUserActive(ctx context.Context, userID uint64) error {
 		return nil
 	}
 
-	pipe := c.redis.Pipeline()
-	pipe.Set(ctx, userActiveKey(userID), "1", FollowingActiveTTL)
-	pipe.Expire(ctx, followingInboxKey(userID), FollowingActiveTTL)
-	addUserRelationTTLToPipeline(ctx, pipe, userID)
-	if _, err := pipe.Exec(ctx); err != nil {
+	keys := []string{
+		userActiveKey(userID),
+		followingInboxKey(userID),
+	}
+	keys = append(keys, userRelationTTLKeys(userID)...)
+
+	if err := markUserActiveScript.Run(
+		ctx,
+		c.redis,
+		keys,
+		strconv.FormatInt(int64(FollowingActiveTTL/time.Second), 10),
+		strconv.FormatInt(int64(FollowingActiveRefreshThreshold/time.Second), 10),
+	).Err(); err != nil {
 		return fmt.Errorf("mark user active: %w", err)
 	}
 	return nil

@@ -43,8 +43,9 @@ const (
 )
 
 const (
-	FollowingInboxMaxEntries = 1000
-	FollowingActiveTTL       = 7 * 24 * time.Hour
+	FollowingInboxMaxEntries        = 1000
+	FollowingActiveTTL              = 7 * 24 * time.Hour
+	FollowingActiveRefreshThreshold = 24 * time.Hour
 )
 
 const (
@@ -269,7 +270,17 @@ func addUserRelationTTLToPipeline(ctx context.Context, pipe redis.Pipeliner, use
 		return
 	}
 
-	for _, key := range []string{
+	for _, key := range userRelationTTLKeys(userID) {
+		pipe.Expire(ctx, key, FollowingActiveTTL)
+	}
+}
+
+func userRelationTTLKeys(userID uint64) []string {
+	if userID == 0 {
+		return nil
+	}
+
+	return []string{
 		userFollowsFullKey(userID),
 		userLikesRecentKey(userID),
 		userLikesOnDemandKey(userID),
@@ -277,8 +288,6 @@ func addUserRelationTTLToPipeline(ctx context.Context, pipe redis.Pipeliner, use
 		userFavoritesOnDemandKey(userID),
 		userRelationMetaKey(userID),
 		followedPullAuthorsKey(userID),
-	} {
-		pipe.Expire(ctx, key, FollowingActiveTTL)
 	}
 }
 
