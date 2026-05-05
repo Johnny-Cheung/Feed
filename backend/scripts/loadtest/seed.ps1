@@ -27,13 +27,15 @@ Add-Type -AssemblyName System.Net.Http
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent (Split-Path -Parent $scriptRoot)
 $videoSample = Get-ChildItem -Path (Join-Path $repoRoot "storage\videos") -Recurse -Filter *.mp4 | Select-Object -First 1
-$coverSample = Get-ChildItem -Path (Join-Path $repoRoot "storage\covers") -Recurse -Filter *.png | Select-Object -First 1
+$coverSample = Get-ChildItem -Path (Join-Path $repoRoot "storage\covers") -Recurse -File |
+    Where-Object { @(".png", ".jpg", ".jpeg", ".webp") -contains $_.Extension.ToLowerInvariant() } |
+    Select-Object -First 1
 
 if (-not $videoSample) {
     throw "No sample .mp4 file found under storage\videos"
 }
 if (-not $coverSample) {
-    throw "No sample .png file found under storage\covers"
+    throw "No sample cover image found under storage\covers"
 }
 
 $summaryFullPath = if ([System.IO.Path]::IsPathRooted($SummaryPath)) {

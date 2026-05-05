@@ -495,9 +495,16 @@ go test ./...
 
 ## 压测
 
-压测脚本位于 `backend/scripts/k6`。生成压测数据前，需要 `backend/storage/videos` 下至少有一个 `.mp4` 样例文件，`backend/storage/covers` 下至少有一个 `.png` 样例文件。
+压测脚本位于 `backend/scripts/k6`。生成压测数据前，需要 `backend/storage/videos` 下至少有一个 `.mp4` 样例文件，`backend/storage/covers` 下至少有一个 `.png`、`.jpg`、`.jpeg` 或 `.webp` 样例文件。
 
-生成种子数据：
+Ubuntu / Linux 生成种子数据：
+
+```bash
+cd ~/Feed/backend
+go run ./cmd/seed -base-url http://localhost:18080
+```
+
+Windows PowerShell 也可以继续使用原脚本：
 
 ```powershell
 cd D:\Feed\backend
@@ -510,7 +517,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\loadtest\seed.ps1 -BaseUrl ht
 backend/scripts/loadtest/seed-output.json
 ```
 
-冒烟测试：
+Ubuntu / Linux 冒烟测试：
+
+```bash
+export SEED_DATA_PATH="$PWD/scripts/loadtest/seed-output.json"
+k6 run --system-tags status,method,name,scenario,expected_response ./scripts/k6/smoke.js
+```
+
+Windows PowerShell 冒烟测试：
 
 ```powershell
 $env:SEED_DATA_PATH="D:\Feed\backend\scripts\loadtest\seed-output.json"
@@ -518,6 +532,14 @@ k6 run --system-tags status,method,name,scenario,expected_response .\scripts\k6\
 ```
 
 读混合测试，默认流量约为 15% 匿名首页、70% 登录首页、15% 关注流：
+
+```bash
+export SEED_DATA_PATH="$PWD/scripts/loadtest/seed-output.json"
+export PAUSE_SECONDS="0"
+export READ_VUS="50"
+export READ_DURATION="1m"
+k6 run --system-tags status,method,name,scenario,expected_response ./scripts/k6/read_mix.js
+```
 
 ```powershell
 $env:SEED_DATA_PATH="D:\Feed\backend\scripts\loadtest\seed-output.json"
@@ -529,6 +551,14 @@ k6 run --system-tags status,method,name,scenario,expected_response .\scripts\k6\
 
 写混合测试，默认流量约为 80% 点赞/取消点赞、10% 收藏/取消收藏、10% 评论创建/删除：
 
+```bash
+export SEED_DATA_PATH="$PWD/scripts/loadtest/seed-output.json"
+export PAUSE_SECONDS="0"
+export WRITE_VUS="100"
+export WRITE_DURATION="1m"
+k6 run --system-tags status,method,name,scenario,expected_response ./scripts/k6/write_mix.js
+```
+
 ```powershell
 $env:SEED_DATA_PATH="D:\Feed\backend\scripts\loadtest\seed-output.json"
 $env:PAUSE_SECONDS="0"
@@ -538,6 +568,14 @@ k6 run --system-tags status,method,name,scenario,expected_response .\scripts\k6\
 ```
 
 读写混合 soak 测试，默认 80% 读、20% 写：
+
+```bash
+export SEED_DATA_PATH="$PWD/scripts/loadtest/seed-output.json"
+export PAUSE_SECONDS="0"
+export SOAK_VUS="150"
+export SOAK_DURATION="1m"
+k6 run --system-tags status,method,name,scenario,expected_response ./scripts/k6/soak.js
+```
 
 ```powershell
 $env:SEED_DATA_PATH="D:\Feed\backend\scripts\loadtest\seed-output.json"
