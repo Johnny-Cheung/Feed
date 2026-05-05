@@ -113,8 +113,8 @@ k6 run --system-tags status,method,name,scenario,expected_response ./scripts/k6/
 
 ```bash
 export PAUSE_SECONDS="0"
-export READ_VUS="300"
-export READ_DURATION="30s"
+export READ_VUS="100"
+export READ_DURATION="300s"
 k6 run --system-tags status,method,name,scenario,expected_response ./scripts/k6/read_mix.js
 ```
 
@@ -159,7 +159,7 @@ READ_DURATION=30s
 | VUs | 300 |
 | 持续时间 | 30s |
 | 总请求数 | 187284 |
-| 请求吞吐 | 5388.57 req/s |
+| 请求吞吐 | 6242.80 req/s |
 | 失败率 | 0.00% |
 | 平均响应时间 | 47.92ms |
 | p90 响应时间 | 67.79ms |
